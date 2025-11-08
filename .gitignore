@@ -1,0 +1,18 @@
+# Compiled binaries
+a.out
+*.o
+tetris
+tetris.exe
+/build/
+
+# Backup / cache files
+*.swp
+*.bak
+*.tmp
+*.log
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
