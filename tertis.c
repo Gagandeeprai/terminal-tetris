@@ -7,30 +7,24 @@
 #define ROWS 20
 #define COLS 10
 #define NUM_TETROMINOES 7
+#define HIGHSCORE_FILE "highscore.txt"
 
 int board[ROWS][COLS] = {0};
 int colorBoard[ROWS][COLS] = {0};
-int score = 0, highScore = 0, linesCleared = 0;
+int score = 0, highScore = 0, linesCleared = 0, level = 1;
 
 int active[4][4], nextPiece[4][4];
 int activeColor = 1, nextColor = 1;
 int px = COLS / 2 - 2, py = 0;
 
 int tetrominoes[NUM_TETROMINOES][4][4] = {
-    // I
-    {{0,0,0,0},{1,1,1,1},{0,0,0,0},{0,0,0,0}},
-    // O
-    {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},
-    // T
-    {{0,0,0,0},{1,1,1,0},{0,1,0,0},{0,0,0,0}},
-    // L
-    {{0,0,0,0},{1,1,1,0},{1,0,0,0},{0,0,0,0}},
-    // J
-    {{0,0,0,0},{1,1,1,0},{0,0,1,0},{0,0,0,0}},
-    // S
-    {{0,0,0,0},{0,1,1,0},{1,1,0,0},{0,0,0,0}},
-    // Z
-    {{0,0,0,0},{1,1,0,0},{0,1,1,0},{0,0,0,0}}
+    {{0,0,0,0},{1,1,1,1},{0,0,0,0},{0,0,0,0}},  // I
+    {{0,0,0,0},{0,1,1,0},{0,1,1,0},{0,0,0,0}},  // O
+    {{0,0,0,0},{1,1,1,0},{0,1,0,0},{0,0,0,0}},  // T
+    {{0,0,0,0},{1,1,1,0},{1,0,0,0},{0,0,0,0}},  // L
+    {{0,0,0,0},{1,1,1,0},{0,0,1,0},{0,0,0,0}},  // J
+    {{0,0,0,0},{0,1,1,0},{1,1,0,0},{0,0,0,0}},  // S
+    {{0,0,0,0},{1,1,0,0},{0,1,1,0},{0,0,0,0}}   // Z
 };
 
 // ---------- Helper Functions ----------
@@ -72,11 +66,13 @@ void lock_piece(int p[4][4], int color) {
 }
 
 void clear_full_lines() {
+    int cleared = 0;
     for (int r = ROWS - 1; r >= 0; r--) {
         int full = 1;
         for (int c = 0; c < COLS; c++)
             if (!board[r][c]) { full = 0; break; }
         if (full) {
+            cleared++;
             for (int rr = r; rr > 0; rr--)
                 for (int cc = 0; cc < COLS; cc++) {
                     board[rr][cc] = board[rr - 1][cc];
@@ -84,10 +80,14 @@ void clear_full_lines() {
                 }
             for (int cc = 0; cc < COLS; cc++)
                 board[0][cc] = colorBoard[0][cc] = 0;
-            score += 100;
-            linesCleared++;
-            r++; // recheck
+            r++;
         }
+    }
+    if (cleared > 0) {
+        linesCleared += cleared;
+        score += 100 * cleared;
+        if (score > highScore) highScore = score;
+        if (linesCleared / 10 + 1 > level) level++;
     }
 }
 
@@ -101,7 +101,26 @@ void reset_board() {
     for (int r = 0; r < ROWS; r++)
         for (int c = 0; c < COLS; c++)
             board[r][c] = colorBoard[r][c] = 0;
-    score = linesCleared = 0;
+    score = linesCleared = level = 0;
+}
+
+// ---------- File I/O ----------
+void load_high_score() {
+    FILE *f = fopen(HIGHSCORE_FILE, "r");
+    if (f) {
+        fscanf(f, "%d", &highScore);
+        fclose(f);
+    } else {
+        highScore = 0;
+    }
+}
+
+void save_high_score() {
+    FILE *f = fopen(HIGHSCORE_FILE, "w");
+    if (f) {
+        fprintf(f, "%d", highScore);
+        fclose(f);
+    }
 }
 
 // ---------- Rendering ----------
@@ -149,31 +168,38 @@ void draw_active(int sy, int sx) {
             }
 }
 
-void draw_next_piece(int sy, int sx) {
-    mvprintw(sy, sx, "Next:");
+void draw_piece(int sy, int sx, int piece[4][4], int color) {
     for (int r = 0; r < 4; r++)
         for (int c = 0; c < 4; c++)
-            if (nextPiece[r][c]) {
-                attron(COLOR_PAIR(nextColor));
-                mvprintw(sy + 1 + r, sx + c * 2, "[]");
-                attroff(COLOR_PAIR(nextColor));
-            } else mvprintw(sy + 1 + r, sx + c * 2, "  ");
+            if (piece[r][c]) {
+                attron(COLOR_PAIR(color));
+                mvprintw(sy + r, sx + c * 2, "[]");
+                attroff(COLOR_PAIR(color));
+            } else mvprintw(sy + r, sx + c * 2, "  ");
 }
 
 void draw_side_panel(int sy, int sx) {
     mvprintw(sy, sx, "Score: %d", score);
     mvprintw(sy + 1, sx, "Lines: %d", linesCleared);
-    mvprintw(sy + 2, sx, "High : %d", highScore);
-    draw_next_piece(sy + 4, sx);
-    mvprintw(sy + 10, sx, "P - Pause");
-    mvprintw(sy + 11, sx, "Q - Quit");
+    mvprintw(sy + 2, sx, "Level: %d", level);
+    mvprintw(sy + 3, sx, "High : %d", highScore);
+
+    mvprintw(sy + 5, sx, "Next:");
+    draw_piece(sy + 6, sx, nextPiece, nextColor);
+
+    mvprintw(sy + 12, sx, "Controls:");
+    mvprintw(sy + 13, sx, "←/→ move");
+    mvprintw(sy + 14, sx, "↑ rotate");
+    mvprintw(sy + 15, sx, "↓ soft drop");
+    mvprintw(sy + 16, sx, "SPACE hard drop");
+    mvprintw(sy + 17, sx, "P pause");
+    mvprintw(sy + 18, sx, "Q quit");
 }
 
-// ---------- Input Flush ----------
 static void flush_input(void) {
     int ch;
     nodelay(stdscr, TRUE);
-    while ((ch = getch()) != ERR) { /* discard all pending keys */ }
+    while ((ch = getch()) != ERR) {}
 }
 
 // ---------- Main ----------
@@ -183,6 +209,8 @@ int main() {
 
     srand(time(NULL));
     for (int i = 1; i <= 7; i++) init_pair(i, i, COLOR_BLACK);
+
+    load_high_score();
 
     int th, tw; getmaxyx(stdscr, th, tw);
     int sy = (th - ROWS) / 2, sx = (tw - (COLS * 2 + 16)) / 2;
@@ -231,7 +259,7 @@ int main() {
 
         draw_border(sy, sx);
         draw_board(sy, sx);
-        draw_ghost(sy, sx);          // 🩶 ghost added back
+        draw_ghost(sy, sx);
         draw_active(sy, sx);
         draw_side_panel(sy, sx + COLS * 2 + 6);
         refresh();
@@ -272,7 +300,8 @@ int main() {
             case 'q': case 'Q': running = 0; break;
         }
 
-        int speed = 10 - (score / 500); if (speed < 2) speed = 2;
+        int speed = 10 - (level / 2);
+        if (speed < 2) speed = 2;
         frame++;
         if (frame % speed == 0) {
             if (can_place(py + 1, px, active)) py++;
@@ -293,6 +322,7 @@ int main() {
         usleep(80000);
     }
 
+    save_high_score();
     endwin();
     return 0;
 }
