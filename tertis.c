@@ -188,9 +188,9 @@ void draw_side_panel(int sy, int sx) {
     draw_piece(sy + 6, sx, nextPiece, nextColor);
 
     mvprintw(sy + 12, sx, "Controls:");
-    mvprintw(sy + 13, sx, "←/→ move");
-    mvprintw(sy + 14, sx, "↑ rotate");
-    mvprintw(sy + 15, sx, "↓ soft drop");
+    mvprintw(sy + 13, sx, "<-/-> move");
+    mvprintw(sy + 14, sx, "Up : rotate");
+    mvprintw(sy + 15, sx, "Down : soft drop");
     mvprintw(sy + 16, sx, "SPACE hard drop");
     mvprintw(sy + 17, sx, "P pause");
     mvprintw(sy + 18, sx, "Q quit");
